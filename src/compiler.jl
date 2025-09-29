@@ -1,5 +1,6 @@
 using FunctionalCollections: PersistentSet, PersistentHashMap, dissoc, assoc, conj, disj
 using Gen
+using StatsFuns: logsumexp
 
 #########################################
 # compiling a trace into a factor graph #
@@ -42,7 +43,7 @@ end
 # may not include the actual addr itself..
 
 function create_factor(
-        trace, addr, 
+        trace, addr,
         latents::Dict{Any,Latent}, observations::Dict{Any,Observation},
         all_latent_addrs::Vector{Any})
     N = length(all_latent_addrs)
@@ -223,7 +224,7 @@ function factor_graph_analysis(trace::Gen.VectorTrace{Gen.UnfoldType}, addrs, cu
     if length(trace.subtraces) == 0
         return (Set{Any}(), Dict{Any,Latent}(), Dict{Any,Observation}())
     end
-    
+
     node_to_ancestor_addrs = Dict{Int,Set{Any}}()
     latents = Dict{Any,Latent}()
     observations = Dict{Any,Observation}()

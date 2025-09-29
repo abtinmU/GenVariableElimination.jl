@@ -1,22 +1,25 @@
 module GenVariableElimination
 
+ENV["JAX_ENABLE_X64"] = "1" 
+
+# Import
 include("factor_graph.jl")
 include("compiler.jl")
 include("gen_fns.jl")
+include("einsum_py_utils.jl")
+include("einsum_backend.jl")
 
+# Public exports
 export FactorGraph
-export variable_elimination, VariableEliminationResult
+export VariableEliminationResult, variable_elimination
 export Latent, Observation, compile_trace_to_factor_graph
 export draw_factor_graph
-export sample_factor_graph, compile_and_sample_factor_graph
-
 export factor_graph_analysis
-export generate_backwards_sampler_fixed_trace
-export generate_backwards_sampler
+export generate_backwards_sampler_fixed_trace, generate_backwards_sampler_fixed_structure
+export backwards_sampler_dml, backwards_sampler_sml
+export EinsumContractionResult, contract_factor_graph_einsum, eliminate_einsum
 
-# annotate built-in discrete distributions with support information
-# (eventually, this will be added to Gen core package)
-
+# Discrete support annotations used by compiler.jl
 function is_finite_discrete end
 function discrete_finite_support_overapprox end
 
