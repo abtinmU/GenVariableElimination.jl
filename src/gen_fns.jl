@@ -1,5 +1,6 @@
 using Gen
 
+# Draws an index from Categorical(probs) and returns the corresponding label
 @dist labeled_cat(labels, probs) = labels[categorical(probs)]
 
 @gen function ve_backwards_sampler(latents, fg, ve_result)
@@ -29,15 +30,25 @@ The sampler is generated using variable elimination followed by backwards sampli
 The sampler takes no arguments and is specialized to the conditional distribution for the given trace.
 """
 function generate_backwards_sampler_fixed_trace(
-        trace::Union{Gen.StaticIRTrace,Gen.VectorTrace{Gen.MapType},Gen.VectorTrace{Gen.UnfoldType}}, addrs)
+        trace::Union{Gen.StaticIRTrace,Gen.VectorTrace{Gen.MapType},Gen.VectorTrace{Gen.UnfoldType}}, addrs;
+        engine::Union{Symbol,String} = :native,
+        backend::Union{Symbol,String} = :auto,
+        optimize::Union{String,Symbol} = "auto",
+        dtype::Union{Symbol,String} = :float64,
+        jit::Bool = true,
+        cache::Bool = true)
     (_, latents, observations) = factor_graph_analysis(trace, addrs)
     fg = compile_trace_to_factor_graph(trace, latents, observations)
-    ve_result = variable_elimination(fg, addrs)
+    ve_result = variable_elimination(fg, addrs;
+                                     engine=engine, backend=backend,
+                                     optimize=optimize, dtype=dtype,
+                                     jit=jit, cache=cache)
     @gen function sampler()
         {*} ~ ve_backwards_sampler(latents, fg, ve_result)
     end
     return sampler
 end
+
 
 """
     sampler::GenerativeFunction = generate_backwards_sampler_fixed_trace(
@@ -50,9 +61,18 @@ The sampler is generated using variable elimination followed by backwards sampli
 The sampler takes no arguments and is specialized to the conditional distribution for the given trace.
 """
 function generate_backwards_sampler_fixed_trace(
-        trace, addrs, latents::Dict{Any,Latent}, observations::Dict{Any,Observation})
+        trace, addrs, latents::Dict{Any,Latent}, observations::Dict{Any,Observation};
+        engine::Union{Symbol,String} = :native,
+        backend::Union{Symbol,String} = :auto,
+        optimize::Union{String,Symbol} = "auto",
+        dtype::Union{Symbol,String} = :float64,
+        jit::Bool = true,
+        cache::Bool = true)
     fg = compile_trace_to_factor_graph(trace, latents, observations)
-    ve_result = variable_elimination(fg, addrs)
+    ve_result = variable_elimination(fg, addrs;
+                                     engine=engine, backend=backend,
+                                     optimize=optimize, dtype=dtype,
+                                     jit=jit, cache=cache)
     @gen function sampler()
         {*} ~ ve_backwards_sampler(latents, fg, ve_result)
     end
@@ -70,29 +90,55 @@ The sampler is generated using variable elimination followed by backwards sampli
 The sampler is specialized to traces with the same control flow path, but not necessarily the same values, as the trace provided to the generation function.
 """
 function generate_backwards_sampler_fixed_structure(
-        trace::Union{Gen.StaticIRTrace,Gen.VectorTrace{Gen.MapType},Gen.VectorTrace{Gen.UnfoldType}}, addrs)
+        trace::Union{Gen.StaticIRTrace,Gen.VectorTrace{Gen.MapType},Gen.VectorTrace{Gen.UnfoldType}}, addrs;
+        engine::Union{Symbol,String} = :native,
+        backend::Union{Symbol,String} = :auto,
+        optimize::Union{String,Symbol} = "auto",
+        dtype::Union{Symbol,String} = :float64,
+        jit::Bool = true,
+        cache::Bool = true)
     (_, latents, observations) = factor_graph_analysis(trace, addrs)
-    @gen function sampler(trace)
-        fg = compile_trace_to_factor_graph(trace, latents, observations)
-        ve_result = variable_elimination(fg, addrs)
-        {*} ~ ve_backwards_sampler(latents, fg, ve_result)
+    let latents=latents, observations=observations, addrs=addrs,
+        engine=engine, backend=backend, optimize=optimize, dtype=dtype, jit=jit, cache=cache
+        @gen function sampler(trace)
+            fg = compile_trace_to_factor_graph(trace, latents, observations)
+            ve_result = variable_elimination(fg, addrs;
+                                             engine=engine, backend=backend,
+                                             optimize=optimize, dtype=dtype,
+                                             jit=jit, cache=cache)
+            {*} ~ ve_backwards_sampler(latents, fg, ve_result)
+        end
+        return sampler
     end
-    return sampler
 end
 
-@gen function backwards_sampler_dml(trace, addrs, latents::Dict{Any,Latent}, observations::Dict{Any,Observation})
+@gen function backwards_sampler_dml(trace, addrs, latents::Dict{Any,Latent}, observations::Dict{Any,Observation};
+                                    engine::Union{Symbol,String} = :native,
+                                    backend::Union{Symbol,String} = :auto,
+                                    optimize::Union{String,Symbol} = "auto",
+                                    dtype::Union{Symbol,String} = :float64,
+                                    jit::Bool = true,
+                                    cache::Bool = true)
     fg = compile_trace_to_factor_graph(trace, latents, observations)
-    ve_result = variable_elimination(fg, addrs)
+    ve_result = variable_elimination(fg, addrs;
+                                     engine=engine, backend=backend,
+                                     optimize=optimize, dtype=dtype,
+                                     jit=jit, cache=cache)
     {*} ~ ve_backwards_sampler(latents, fg, ve_result)
 end
 
-@gen function backwards_sampler_sml(trace, addrs)
+@gen function backwards_sampler_sml(trace, addrs;
+                                    engine::Union{Symbol,String} = :native,
+                                    backend::Union{Symbol,String} = :auto,
+                                    optimize::Union{String,Symbol} = "auto",
+                                    dtype::Union{Symbol,String} = :float64,
+                                    jit::Bool = true,
+                                    cache::Bool = true)
     (_, latents, observations) = factor_graph_analysis(trace, addrs)
     fg = compile_trace_to_factor_graph(trace, latents, observations)
-    ve_result = variable_elimination(fg, addrs)
+    ve_result = variable_elimination(fg, addrs;
+                                     engine=engine, backend=backend,
+                                     optimize=optimize, dtype=dtype,
+                                     jit=jit, cache=cache)
     {*} ~ ve_backwards_sampler(latents, fg, ve_result)
 end
-
-export generate_backwards_sampler_fixed_structure
-export generate_backwards_sampler_fixed_trace
-export backwards_sampler_dml, backwards_sampler_sml
